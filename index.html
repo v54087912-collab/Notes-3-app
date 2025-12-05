@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WavePlay - Music Player</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+</head>
+<body>
+
+    <div id="loading-spinner" class="spinner-container">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="app-container">
+
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="logo">WavePlay <span class="neon-dot">.</span></div>
+            <div class="profile-icon" onclick="navigateTo('profile')">
+                <img src="https://placehold.co/100x100/333/fff?text=U" alt="Profile">
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+
+            <!-- Home Page -->
+            <section id="home" class="page active">
+                <div class="search-bar-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search songs, artists...">
+                    <i class="fas fa-microphone" id="voice-search-btn"></i>
+                </div>
+
+                <h3 class="section-title">Categories</h3>
+                <div class="categories-scroll" id="categories-list">
+                    <!-- Categories injected by JS -->
+                </div>
+
+                <h3 class="section-title">Trending Now</h3>
+                <div class="song-list" id="trending-list">
+                    <!-- Songs injected by JS -->
+                </div>
+
+                <h3 class="section-title">Recently Played</h3>
+                <div class="song-list" id="recent-list">
+                    <!-- Songs injected by JS -->
+                </div>
+            </section>
+
+            <!-- Library/Playlists Page -->
+            <section id="library" class="page">
+                <h2 class="page-title">Your Library</h2>
+                <div class="action-buttons">
+                    <button class="btn-3d" onclick="createNewPlaylist()">
+                        <i class="fas fa-plus"></i> New Playlist
+                    </button>
+                </div>
+                <div id="playlists-container">
+                    <!-- Playlists injected by JS -->
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="profile" class="page">
+                <div class="profile-header">
+                    <img src="https://placehold.co/150x150/333/fff?text=User" class="profile-pic-large">
+                    <h2 id="username-display">Guest User</h2>
+                </div>
+
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <span>Dark Mode</span>
+                        <label class="switch">
+                            <input type="checkbox" id="theme-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                         <span>Notifications</span>
+                         <label class="switch">
+                             <input type="checkbox" checked>
+                             <span class="slider round"></span>
+                         </label>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Player Page (Overlay) -->
+        <div id="full-player" class="player-overlay">
+            <div class="player-header">
+                <i class="fas fa-chevron-down" onclick="toggleFullPlayer()"></i>
+                <span>Now Playing</span>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+
+            <div class="album-art-container">
+                <img id="player-art" src="" alt="Album Art">
+            </div>
+
+            <div class="track-info-large">
+                <h2 id="player-title">Song Title</h2>
+                <p id="player-artist">Artist Name</p>
+            </div>
+
+            <div class="controls-large">
+                <div class="progress-area">
+                    <input type="range" id="seek-bar" value="0" min="0" max="100">
+                    <div class="time-info">
+                        <span id="current-time">0:00</span>
+                        <span id="duration">0:00</span>
+                    </div>
+                </div>
+
+                <div class="main-controls">
+                    <button class="btn-icon" id="shuffle-btn"><i class="fas fa-random"></i></button>
+                    <button class="btn-icon" id="prev-btn-large"><i class="fas fa-step-backward"></i></button>
+                    <button class="btn-play-large" id="play-btn-large"><i class="fas fa-play"></i></button>
+                    <button class="btn-icon" id="next-btn-large"><i class="fas fa-step-forward"></i></button>
+                    <button class="btn-icon" id="loop-btn"><i class="fas fa-redo"></i></button>
+                </div>
+
+                <div class="extra-controls">
+                    <button class="btn-icon" onclick="addToPlaylistCurrent()"><i class="fas fa-plus"></i></button>
+                    <div class="volume-container">
+                        <i class="fas fa-volume-up"></i>
+                        <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mini Player (Bottom) -->
+        <div id="mini-player" class="mini-player glass-panel" onclick="toggleFullPlayer()">
+            <img id="mini-art" src="https://placehold.co/50?text=Music" alt="Art">
+            <div class="mini-info">
+                <span id="mini-title">Select a song</span>
+                <span id="mini-artist">Artist</span>
+            </div>
+            <div class="mini-controls" onclick="event.stopPropagation()">
+                <button class="btn-icon" id="play-btn-mini"><i class="fas fa-play"></i></button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav glass-panel">
+            <div class="nav-item active" onclick="navigateTo('home')">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('library')">
+                <i class="fas fa-list"></i>
+                <span>Library</span>
+            </div>
+            <div class="nav-item" onclick="navigateTo('profile')">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </div>
+        </nav>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/songs.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker Registered', reg))
+            .catch(err => console.log('Service Worker Failed', err));
+        }
+    </script>
+</body>
+</html>
