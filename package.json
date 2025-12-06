@@ -1,0 +1,21 @@
+{
+  "name": "waveplay-music",
+  "version": "1.0.0",
+  "description": "Professional Music Player App with Neon UI",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve",
+    "build": "echo 'No build step required for static site' && exit 0"
+  },
+  "keywords": [
+    "music",
+    "player",
+    "pwa",
+    "neon"
+  ],
+  "author": "WavePlay",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
