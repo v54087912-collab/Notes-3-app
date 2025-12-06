@@ -16,6 +16,7 @@ Professional Music Player App with Neon UI, Glassmorphism, and 3D Buttons.
 1.  You need a local web server because of Service Worker policies and CORS.
 2.  If you have Python installed:
     ```bash
+    cd public
     python3 -m http.server
     ```
 3.  Open `http://localhost:8000` in your browser.
