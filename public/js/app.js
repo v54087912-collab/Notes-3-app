@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSongs(songDatabase);
     loadCategories();
     loadRecent();
-    setupEventListeners();
     setupTheme();
     updateGreeting();
 
