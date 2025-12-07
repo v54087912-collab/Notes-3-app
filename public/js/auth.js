@@ -11,6 +11,25 @@ const signupPass = document.getElementById('signup-password');
 const loginError = document.getElementById('login-error');
 const signupError = document.getElementById('signup-error');
 
+function getFriendlyErrorMessage(error) {
+    // Map Firebase error codes to friendly messages
+    const errorCode = error.code || '';
+    if (errorCode === 'auth/email-already-in-use') {
+        return "This email is already in use. Please log in.";
+    } else if (errorCode === 'auth/invalid-email') {
+        return "Please enter a valid email address.";
+    } else if (errorCode === 'auth/weak-password') {
+        return "Password should be at least 6 characters.";
+    } else if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
+        return "Invalid email or password.";
+    } else if (errorCode === 'auth/network-request-failed') {
+        return "Network error. Please check your internet connection.";
+    }
+
+    // Fallback to error message or a generic one
+    return error.message || "An unexpected error occurred.";
+}
+
 // Login Logic
 if(loginBtn) {
     loginBtn.addEventListener('click', async () => {
@@ -30,7 +49,7 @@ if(loginBtn) {
 
             window.location.href = 'index.html';
         } catch (error) {
-            loginError.innerText = error.message;
+            loginError.innerText = getFriendlyErrorMessage(error);
             loginError.style.display = 'block';
         }
     });
@@ -64,7 +83,7 @@ if(signupBtn) {
 
             window.location.href = 'index.html';
         } catch (error) {
-            signupError.innerText = error.message;
+            signupError.innerText = getFriendlyErrorMessage(error);
             signupError.style.display = 'block';
         }
     });
