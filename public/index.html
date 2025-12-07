@@ -6,6 +6,27 @@
     <title>WavePlay - Music Player</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-badge {
+            display: none;
+            background: var(--secondary-neon);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .auth-btn {
+            background: transparent;
+            border: 1px solid var(--primary-neon);
+            color: var(--primary-neon);
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
 </head>
@@ -20,8 +41,12 @@
         <!-- Top Bar -->
         <header class="top-bar">
             <div class="logo">WavePlay <span class="neon-dot">.</span></div>
-            <div class="profile-icon" onclick="navigateTo('profile')">
-                <img src="https://placehold.co/100x100/333/fff?text=U" alt="Profile">
+            <div style="display: flex; align-items: center;">
+                 <span id="admin-badge" class="admin-badge" onclick="location.href='admin.html'">ADMIN</span>
+                 <button id="auth-btn-top" class="auth-btn" onclick="location.href='login.html'">Login</button>
+                 <div class="profile-icon" onclick="navigateTo('profile')" style="margin-left: 10px;">
+                    <img id="header-profile-img" src="https://placehold.co/100x100/333/fff?text=U" alt="Profile">
+                 </div>
             </div>
         </header>
 
@@ -168,7 +193,7 @@
 
     <!-- Scripts -->
     <script src="js/songs.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
     <script>
         // Register Service Worker
         if ('serviceWorker' in navigator) {

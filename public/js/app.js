@@ -5,6 +5,10 @@ let audio = new Audio();
 let currentPlaylist = []; // Current list of songs being played (Trending, Playlist, Search results)
 let userPlaylists = JSON.parse(localStorage.getItem('userPlaylists')) || {};
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+let dbSongs = []; // Songs fetched from Firestore
+
+// Imports
+import { db, collection, getDocs, increment, doc, updateDoc, auth, onAuthStateChanged, signOut } from './firebase-config.js';
 
 // Constants
 const songListElement = document.getElementById('trending-list');
@@ -13,21 +17,73 @@ const categoriesListElement = document.getElementById('categories-list');
 const searchInput = document.getElementById('search-input');
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
-    loadSongs(songDatabase);
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check Auth State
+    onAuthStateChanged(auth, (user) => {
+        const authBtn = document.getElementById('auth-btn-top');
+        const adminBadge = document.getElementById('admin-badge');
+        const profileImg = document.getElementById('header-profile-img');
+        const usernameDisplay = document.getElementById('username-display');
+
+        if (user) {
+            authBtn.innerText = 'Logout';
+            authBtn.onclick = () => signOut(auth).then(()=> window.location.reload());
+
+            if(profileImg) profileImg.src = `https://ui-avatars.com/api/?name=${user.email}&background=random`;
+            if(usernameDisplay) usernameDisplay.innerText = user.displayName || user.email;
+
+            // Check Admin
+            if(user.email === 'devxrev01@gmail.com') {
+                adminBadge.style.display = 'inline-block';
+            } else {
+                adminBadge.style.display = 'none';
+            }
+        } else {
+            authBtn.innerText = 'Login';
+            authBtn.onclick = () => window.location.href = 'login.html';
+            adminBadge.style.display = 'none';
+        }
+    });
+
+    await fetchSongsFromFirestore();
     loadCategories();
     loadRecent();
     setupTheme();
     updateGreeting();
 
     // Default to trending
-    currentPlaylist = [...songDatabase];
+    currentPlaylist = [...dbSongs];
 
     // Hide spinner
     setTimeout(() => {
         document.getElementById('loading-spinner').classList.add('hidden');
     }, 1000);
 });
+
+async function fetchSongsFromFirestore() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "songs"));
+        dbSongs = [];
+        querySnapshot.forEach((doc) => {
+            dbSongs.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Fallback to local songs.js if DB is empty (seeding logic could go here)
+        if (dbSongs.length === 0 && typeof songDatabase !== 'undefined') {
+            console.log("Firestore empty, using local fallback");
+            dbSongs = songDatabase;
+        }
+
+        loadSongs(dbSongs);
+    } catch (e) {
+        console.error("Error fetching songs: ", e);
+        // Fallback
+        if(typeof songDatabase !== 'undefined') {
+            loadSongs(songDatabase);
+            dbSongs = songDatabase;
+        }
+    }
+}
 
 // Navigation
 window.navigateTo = function(pageId) {
@@ -89,17 +145,41 @@ function loadSongs(songs, targetElement = songListElement) {
 }
 
 // Categories
-function loadCategories() {
-    const categories = ['All', 'LoFi', 'Pop', 'Chill', 'Bollywood', 'Anime', 'Rock'];
+async function loadCategories() {
+    const categoriesListElement = document.getElementById('categories-list');
     categoriesListElement.innerHTML = '';
-    categories.forEach(cat => {
-        const pill = document.createElement('div');
-        pill.className = 'category-pill';
-        pill.innerText = cat;
-        pill.onclick = () => filterByCategory(cat, pill);
-        if(cat === 'All') pill.classList.add('active');
-        categoriesListElement.appendChild(pill);
-    });
+
+    // Add 'All' first
+    const allPill = document.createElement('div');
+    allPill.className = 'category-pill active';
+    allPill.innerText = 'All';
+    allPill.onclick = () => filterByCategory('All', allPill);
+    categoriesListElement.appendChild(allPill);
+
+    try {
+        const snap = await getDocs(collection(db, "categories"));
+        if (!snap.empty) {
+            snap.forEach(doc => {
+                const cat = doc.data().name;
+                const pill = document.createElement('div');
+                pill.className = 'category-pill';
+                pill.innerText = cat;
+                pill.onclick = () => filterByCategory(cat, pill);
+                categoriesListElement.appendChild(pill);
+            });
+        } else {
+             // Fallback
+            ['LoFi', 'Pop', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(cat => {
+                const pill = document.createElement('div');
+                pill.className = 'category-pill';
+                pill.innerText = cat;
+                pill.onclick = () => filterByCategory(cat, pill);
+                categoriesListElement.appendChild(pill);
+            });
+        }
+    } catch (e) {
+        console.error("Error loading categories", e);
+    }
 }
 
 function filterByCategory(category, element) {
@@ -107,24 +187,35 @@ function filterByCategory(category, element) {
     element.classList.add('active');
 
     if (category === 'All') {
-        loadSongs(songDatabase);
+        loadSongs(dbSongs);
     } else {
-        const filtered = songDatabase.filter(s => s.category === category);
+        const filtered = dbSongs.filter(s => s.category === category);
         loadSongs(filtered);
     }
 }
 
 // Audio Player Logic
-function playSong(id, playlistContext = songDatabase) {
+function playSong(id, playlistContext = dbSongs) {
     currentPlaylist = playlistContext;
     const index = currentPlaylist.findIndex(s => s.id === id);
     if (index !== -1) {
         currentSongIndex = index;
-        loadAudio(currentPlaylist[currentSongIndex]);
+        const song = currentPlaylist[currentSongIndex];
+        loadAudio(song);
         audio.play();
         isPlaying = true;
         updatePlayerUI();
-        addToRecent(currentPlaylist[currentSongIndex]);
+        addToRecent(song);
+
+        // Update Play Count in Firestore
+        // We only do this if it's a Firestore document (has a string ID usually, local IDs are numbers 1,2,3)
+        // Check if ID is string (Firestore auto-id) or if we fetched it from DB
+        if (typeof id === 'string' && id.length > 5) {
+             const songRef = doc(db, "songs", id);
+             updateDoc(songRef, {
+                 playCount: increment(1)
+             }).catch(err => console.log("Play count update failed", err));
+        }
     }
 }
 
@@ -251,7 +342,7 @@ document.getElementById('prev-btn-large').onclick = playPrev;
 // Search
 searchInput.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
-    const filtered = songDatabase.filter(s =>
+    const filtered = dbSongs.filter(s =>
         s.title.toLowerCase().includes(term) ||
         s.artist.toLowerCase().includes(term)
     );

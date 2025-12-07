@@ -1,4 +1,4 @@
-const songDatabase = [
+window.songDatabase = [
   {
     "id": "1",
     "title": "Neon Dreams",

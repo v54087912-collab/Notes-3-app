@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - WavePlay</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: var(--bg-color);
+        }
+        .auth-box {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            border: var(--glass-border);
+            text-align: center;
+        }
+        .auth-box h2 {
+            margin-bottom: 20px;
+            color: var(--primary-neon);
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
+            color: var(--text-color);
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .btn-auth {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: var(--primary-neon);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        .switch-auth {
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .switch-auth a {
+            color: var(--secondary-neon);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .error-msg {
+            color: #ff4444;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <!-- Login Form -->
+        <div id="login-form" class="auth-box">
+            <h2>Welcome Back</h2>
+            <div id="login-error" class="error-msg"></div>
+            <div class="input-group">
+                <input type="email" id="login-email" placeholder="Email">
+            </div>
+            <div class="input-group">
+                <input type="password" id="login-password" placeholder="Password">
+            </div>
+            <button class="btn-auth" id="btn-login">Login</button>
+            <p class="switch-auth">New here? <a onclick="toggleAuth()">Create Account</a></p>
+            <p class="switch-auth"><a href="index.html">Continue as Guest</a></p>
+        </div>
+
+        <!-- Signup Form -->
+        <div id="signup-form" class="auth-box" style="display: none;">
+            <h2>Create Account</h2>
+            <div id="signup-error" class="error-msg"></div>
+            <div class="input-group">
+                <input type="text" id="signup-name" placeholder="Full Name">
+            </div>
+            <div class="input-group">
+                <input type="email" id="signup-email" placeholder="Email">
+            </div>
+            <div class="input-group">
+                <input type="password" id="signup-password" placeholder="Password">
+            </div>
+            <button class="btn-auth" id="btn-signup">Sign Up</button>
+            <p class="switch-auth">Already have an account? <a onclick="toggleAuth()">Login</a></p>
+        </div>
+    </div>
+
+    <script type="module" src="js/auth.js"></script>
+    <script>
+        function toggleAuth() {
+            const login = document.getElementById('login-form');
+            const signup = document.getElementById('signup-form');
+            if (login.style.display === 'none') {
+                login.style.display = 'block';
+                signup.style.display = 'none';
+            } else {
+                login.style.display = 'none';
+                signup.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
