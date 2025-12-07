@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - WavePlay</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-container {
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: var(--card-bg);
+            border: var(--glass-border);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .tab-btn.active {
+            background: var(--primary-neon);
+            color: #000;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Analytics Bars */
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 200px;
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .chart-bar {
+            flex: 1;
+            background: var(--primary-neon);
+            border-radius: 5px 5px 0 0;
+            transition: height 0.5s;
+            position: relative;
+        }
+        .chart-bar:hover::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 12px;
+        }
+        .chart-label {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 5px;
+            color: #aaa;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border: var(--glass-border);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 32px;
+            color: var(--primary-neon);
+            font-weight: bold;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Forms */
+        .admin-form {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+        }
+
+        /* Lists */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .list-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .btn-edit { background: #ffa500; color: #000; }
+        .btn-delete { background: #ff4444; color: #fff; }
+        .btn-block { background: #555; color: #fff; }
+
+        .loading-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="admin-container" id="admin-panel" style="display:none;">
+        <div class="admin-header">
+            <h1>Admin Dashboard</h1>
+            <button class="btn-3d" onclick="location.href='index.html'">Back to App</button>
+        </div>
+
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('upload')">Upload Song</button>
+            <button class="tab-btn" onclick="switchTab('songs')">Manage Songs</button>
+            <button class="tab-btn" onclick="switchTab('categories')">Categories</button>
+            <button class="tab-btn" onclick="switchTab('users')">Users</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-users">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-songs">0</div>
+                    <div class="stat-label">Total Songs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-plays">0</div>
+                    <div class="stat-label">Total Streams</div>
+                </div>
+            </div>
+
+            <h3>Analytics (Mocked Daily Streams)</h3>
+            <div class="chart-container" id="streams-chart">
+                <!-- Bars injected -->
+            </div>
+
+            <h3 style="margin-top:30px;">Most Played Songs</h3>
+            <div id="top-songs-list" class="item-list">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="upload" class="tab-content">
+            <div class="admin-form">
+                <h3 id="upload-header">Upload New Song</h3>
+                <input type="hidden" id="edit-id"> <!-- Hidden ID for Editing -->
+                <div class="form-group">
+                    <label>Song Title</label>
+                    <input type="text" id="up-title">
+                </div>
+                <div class="form-group">
+                    <label>Artist</label>
+                    <input type="text" id="up-artist">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="up-category">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cover Image URL (GitHub Raw)</label>
+                    <input type="text" id="up-cover" placeholder="https://raw.github...">
+                </div>
+                <div class="form-group">
+                    <label>MP3 URL (GitHub Raw)</label>
+                    <input type="text" id="up-url" placeholder="https://raw.github...">
+                </div>
+                <button class="btn-3d" id="btn-upload">Upload Song</button>
+                <button class="btn-3d" id="btn-cancel-edit" style="display:none; background:#555; margin-top:10px;">Cancel Edit</button>
+            </div>
+        </div>
+
+        <!-- Manage Songs Tab -->
+        <div id="songs" class="tab-content">
+            <div class="input-group" style="margin-bottom:20px;">
+                <input type="text" id="search-manage" placeholder="Search songs..." style="width:100%; padding:10px; border-radius:8px;">
+            </div>
+            <div id="manage-song-list" class="item-list">
+                <!-- List -->
+            </div>
+        </div>
+
+        <!-- Categories Tab -->
+        <div id="categories" class="tab-content">
+             <div class="admin-form" style="margin-bottom: 20px;">
+                 <div style="display:flex; gap:10px;">
+                     <input type="text" id="new-cat-name" placeholder="New Category Name">
+                     <button class="btn-sm btn-edit" id="btn-add-cat">Add</button>
+                 </div>
+             </div>
+             <div id="cat-list" class="item-list"></div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users" class="tab-content">
+             <div id="user-list" class="item-list">
+                 <!-- List -->
+             </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, addDoc, doc, deleteDoc, updateDoc, query, orderBy, limit, getDoc, setDoc } from './js/firebase-config.js';
+
+        // Check Admin Auth via Session
+        document.addEventListener('DOMContentLoaded', () => {
+             const isAdmin = sessionStorage.getItem('isAdmin');
+             if (isAdmin !== 'true') {
+                 // Not authenticated as admin
+                 window.location.href = 'index.html';
+             } else {
+                 document.getElementById('loading').style.display = 'none';
+                 document.getElementById('admin-panel').style.display = 'block';
+                 loadCategoriesToSelect();
+                 loadDashboard();
+             }
+        });
+
+        // Tabs
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            // Simple mapping or index based
+            const tabs = ['dashboard', 'upload', 'songs', 'categories', 'users'];
+            const idx = tabs.indexOf(tabId);
+            if(idx !== -1) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+
+            if(tabId === 'songs') loadManageSongs();
+            if(tabId === 'users') loadUsers();
+            if(tabId === 'categories') loadCategoriesTab();
+        };
+
+        // 1. Load Dashboard Stats
+        async function loadDashboard() {
+            // Count Songs
+            const songsSnap = await getDocs(collection(db, "songs"));
+            document.getElementById('total-songs').innerText = songsSnap.size;
+
+            // Count Users
+            const usersSnap = await getDocs(collection(db, "users"));
+            document.getElementById('total-users').innerText = usersSnap.size;
+
+            // Calculate Streams & Top Songs
+            let totalPlays = 0;
+            let songs = [];
+            songsSnap.forEach(doc => {
+                const data = doc.data();
+                const plays = data.playCount || 0;
+                totalPlays += plays;
+                songs.push({ id: doc.id, ...data });
+            });
+            document.getElementById('total-plays').innerText = totalPlays;
+
+            // Render Charts (Mock Data + Real Total)
+            renderCharts(totalPlays);
+
+            // Top 5
+            songs.sort((a,b) => (b.playCount || 0) - (a.playCount || 0));
+            const topList = document.getElementById('top-songs-list');
+            topList.innerHTML = '';
+            songs.slice(0, 5).forEach(song => {
+                topList.innerHTML += `
+                    <div class="list-row">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <img src="${song.cover}" width="40" height="40" style="border-radius:5px;">
+                            <div>
+                                <div style="font-weight:bold;">${song.title}</div>
+                                <div style="font-size:12px; color:#aaa;">${song.artist}</div>
+                            </div>
+                        </div>
+                        <div style="color:var(--primary-neon);">${song.playCount || 0} plays</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderCharts(total) {
+            const chart = document.getElementById('streams-chart');
+            chart.innerHTML = '';
+            // Mock data for last 7 days
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            days.forEach(day => {
+                const val = Math.floor(Math.random() * (total > 0 ? total/2 : 10)); // Random relative to total
+                const h = Math.min(val * 5 + 10, 100); // Scale
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = h + '%';
+                bar.setAttribute('data-value', val);
+
+                const label = document.createElement('div');
+                label.className = 'chart-label';
+                label.innerText = day;
+                bar.appendChild(label);
+
+                chart.appendChild(bar);
+            });
+        }
+
+        // 2. Upload / Edit Song Logic
+        const btnUpload = document.getElementById('btn-upload');
+        const btnCancel = document.getElementById('btn-cancel-edit');
+        const editIdInput = document.getElementById('edit-id');
+
+        btnCancel.onclick = () => resetUploadForm();
+
+        btnUpload.onclick = async () => {
+            const title = document.getElementById('up-title').value;
+            const artist = document.getElementById('up-artist').value;
+            const category = document.getElementById('up-category').value;
+            const cover = document.getElementById('up-cover').value;
+            const url = document.getElementById('up-url').value;
+            const editId = editIdInput.value;
+
+            if(!title || !url) return alert("Title and URL required");
+
+            try {
+                if(editId) {
+                    // Update
+                    await updateDoc(doc(db, "songs", editId), {
+                        title, artist, category, cover, url
+                    });
+                    alert("Song Updated!");
+                    resetUploadForm();
+                } else {
+                    // Add
+                    await addDoc(collection(db, "songs"), {
+                        title, artist, category, cover, url,
+                        playCount: 0,
+                        dateAdded: new Date()
+                    });
+                    alert("Song Uploaded!");
+                    resetUploadForm();
+                }
+                loadDashboard();
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        };
+
+        function resetUploadForm() {
+            document.getElementById('up-title').value = '';
+            document.getElementById('up-artist').value = '';
+            document.getElementById('up-cover').value = '';
+            document.getElementById('up-url').value = '';
+            editIdInput.value = '';
+            document.getElementById('upload-header').innerText = "Upload New Song";
+            btnUpload.innerText = "Upload Song";
+            btnCancel.style.display = 'none';
+        }
+
+        function editSong(id, data) {
+            switchTab('upload');
+            document.getElementById('upload-header').innerText = "Edit Song";
+            btnUpload.innerText = "Update Song";
+            btnCancel.style.display = 'inline-block';
+
+            editIdInput.value = id;
+            document.getElementById('up-title').value = data.title;
+            document.getElementById('up-artist').value = data.artist;
+            document.getElementById('up-category').value = data.category;
+            document.getElementById('up-cover').value = data.cover;
+            document.getElementById('up-url').value = data.url;
+        }
+
+        // 3. Manage Songs
+        async function loadManageSongs() {
+            const list = document.getElementById('manage-song-list');
+            list.innerHTML = 'Loading...';
+            const querySnapshot = await getDocs(collection(db, "songs"));
+            list.innerHTML = '';
+
+            querySnapshot.forEach((docSnap) => {
+                const s = docSnap.data();
+                const item = document.createElement('div');
+                item.className = 'list-row';
+                item.innerHTML = `
+                    <div>${s.title} <span style="color:#666">by ${s.artist}</span></div>
+                    <div>
+                        <button class="btn-sm btn-edit">Edit</button>
+                        <button class="btn-sm btn-delete">Delete</button>
+                    </div>
+                `;
+
+                item.querySelector('.btn-edit').onclick = () => editSong(docSnap.id, s);
+                item.querySelector('.btn-delete').onclick = async () => {
+                    if(confirm(`Delete ${s.title}?`)) {
+                        await deleteDoc(doc(db, "songs", docSnap.id));
+                        loadManageSongs(); // Refresh
+                        loadDashboard();
+                    }
+                };
+
+                list.appendChild(item);
+            });
+        }
+
+        // 3.5 Categories
+        async function loadCategoriesToSelect() {
+             const select = document.getElementById('up-category');
+             select.innerHTML = '';
+             const snap = await getDocs(collection(db, "categories"));
+             if(snap.empty) {
+                 // Seed defaults if empty
+                 ['Pop', 'LoFi', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(c => {
+                     addDoc(collection(db, "categories"), { name: c });
+                 });
+                 // Re-fetch (lazy) or just add
+                 ['Pop', 'LoFi', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.innerText = c;
+                    select.appendChild(opt);
+                 });
+             } else {
+                 snap.forEach(doc => {
+                     const opt = document.createElement('option');
+                     opt.value = doc.data().name;
+                     opt.innerText = doc.data().name;
+                     select.appendChild(opt);
+                 });
+             }
+        }
+
+        async function loadCategoriesTab() {
+            const list = document.getElementById('cat-list');
+            list.innerHTML = 'Loading...';
+            const snap = await getDocs(collection(db, "categories"));
+            list.innerHTML = '';
+
+            snap.forEach(docSnap => {
+                 const c = docSnap.data();
+                 const item = document.createElement('div');
+                 item.className = 'list-row';
+                 item.innerHTML = `
+                    <div>${c.name}</div>
+                    <div><button class="btn-sm btn-delete">Delete</button></div>
+                 `;
+                 item.querySelector('.btn-delete').onclick = async () => {
+                     if(confirm(`Delete Category ${c.name}?`)) {
+                         await deleteDoc(doc(db, "categories", docSnap.id));
+                         loadCategoriesTab();
+                         loadCategoriesToSelect();
+                     }
+                 };
+                 list.appendChild(item);
+            });
+        }
+
+        document.getElementById('btn-add-cat').onclick = async () => {
+             const name = document.getElementById('new-cat-name').value;
+             if(name) {
+                 await addDoc(collection(db, "categories"), { name });
+                 document.getElementById('new-cat-name').value = '';
+                 loadCategoriesTab();
+                 loadCategoriesToSelect();
+             }
+        };
+
+        // 4. Manage Users
+        async function loadUsers() {
+            const list = document.getElementById('user-list');
+            list.innerHTML = 'Loading...';
+            const querySnapshot = await getDocs(collection(db, "users"));
+            list.innerHTML = '';
+
+            querySnapshot.forEach((docSnap) => {
+                const u = docSnap.data();
+                const item = document.createElement('div');
+                item.className = 'list-row';
+                const isBlocked = u.isBlocked || false;
+
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight:bold;">${u.name || 'User'}</div>
+                        <div style="font-size:12px; color:#aaa;">${u.email}</div>
+                    </div>
+                    <div>
+                        <button class="btn-sm btn-block">${isBlocked ? 'Unblock' : 'Block'}</button>
+                    </div>
+                `;
+
+                // Block Action
+                item.querySelector('.btn-block').onclick = async () => {
+                    await updateDoc(doc(db, "users", docSnap.id), {
+                        isBlocked: !isBlocked
+                    });
+                    loadUsers();
+                };
+
+                list.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
