@@ -30,11 +30,33 @@ function getFriendlyErrorMessage(error) {
     return error.message || "An unexpected error occurred.";
 }
 
+function setLoading(button, isLoading) {
+    if(isLoading) {
+        button.dataset.originalText = button.innerText;
+        button.innerText = "Processing...";
+        button.disabled = true;
+        button.style.opacity = "0.7";
+    } else {
+        button.innerText = button.dataset.originalText || "Submit";
+        button.disabled = false;
+        button.style.opacity = "1";
+    }
+}
+
 // Login Logic
 if(loginBtn) {
     loginBtn.addEventListener('click', async () => {
-        const email = loginEmail.value;
+        const email = loginEmail.value.trim();
         const password = loginPass.value;
+
+        if(!email || !password) {
+             loginError.innerText = "Please fill in all fields.";
+             loginError.style.display = 'block';
+             return;
+        }
+
+        setLoading(loginBtn, true);
+        loginError.style.display = 'none';
 
         try {
             const userCred = await signInWithEmailAndPassword(auth, email, password);
@@ -47,10 +69,13 @@ if(loginBtn) {
                  throw new Error("Your account has been blocked by the admin.");
             }
 
+            // Real-time: Redirect immediately
             window.location.href = 'index.html';
         } catch (error) {
+            console.error(error);
             loginError.innerText = getFriendlyErrorMessage(error);
             loginError.style.display = 'block';
+            setLoading(loginBtn, false);
         }
     });
 }
@@ -58,8 +83,8 @@ if(loginBtn) {
 // Signup Logic
 if(signupBtn) {
     signupBtn.addEventListener('click', async () => {
-        const name = signupName.value;
-        const email = signupEmail.value;
+        const name = signupName.value.trim();
+        const email = signupEmail.value.trim();
         const password = signupPass.value;
 
         if(!name || !email || !password) {
@@ -67,6 +92,9 @@ if(signupBtn) {
             signupError.style.display = 'block';
             return;
         }
+
+        setLoading(signupBtn, true);
+        signupError.style.display = 'none';
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -81,10 +109,13 @@ if(signupBtn) {
                 isBlocked: false
             });
 
+            // Real-time: Redirect immediately
             window.location.href = 'index.html';
         } catch (error) {
+            console.error(error);
             signupError.innerText = getFriendlyErrorMessage(error);
             signupError.style.display = 'block';
+            setLoading(signupBtn, false);
         }
     });
 }
