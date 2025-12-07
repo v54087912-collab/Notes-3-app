@@ -6,27 +6,6 @@
     <title>WavePlay - Music Player</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .admin-badge {
-            display: none;
-            background: var(--secondary-neon);
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            margin-left: 10px;
-            cursor: pointer;
-        }
-        .auth-btn {
-            background: transparent;
-            border: 1px solid var(--primary-neon);
-            color: var(--primary-neon);
-            padding: 5px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-    </style>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
 </head>
@@ -36,14 +15,39 @@
         <div class="spinner"></div>
     </div>
 
+    <!-- Sidebar Menu -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2>WavePlay</h2>
+            <i class="fas fa-times" onclick="toggleSidebar()"></i>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-item" onclick="navigateTo('home'); toggleSidebar();">
+                <i class="fas fa-home"></i> Home
+            </div>
+            <div class="menu-item" onclick="navigateTo('library'); toggleSidebar();">
+                <i class="fas fa-list"></i> Library
+            </div>
+            <div class="menu-item" onclick="navigateTo('profile'); toggleSidebar();">
+                <i class="fas fa-user"></i> Profile
+            </div>
+            <hr style="border-color: rgba(255,255,255,0.1);">
+            <div class="menu-item" onclick="openAdminPanel()">
+                <i class="fas fa-user-shield"></i> Admin Panel
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
 
         <!-- Top Bar -->
         <header class="top-bar">
-            <div class="logo">WavePlay <span class="neon-dot">.</span></div>
+            <div class="left-section" style="display: flex; align-items: center;">
+                <i class="fas fa-bars" onclick="toggleSidebar()" style="font-size: 20px; margin-right: 15px; cursor: pointer;"></i>
+                <div class="logo">WavePlay <span class="neon-dot">.</span></div>
+            </div>
             <div style="display: flex; align-items: center;">
-                 <span id="admin-badge" class="admin-badge" onclick="location.href='admin.html'">ADMIN</span>
-                 <button id="auth-btn-top" class="auth-btn" onclick="location.href='login.html'">Login</button>
                  <div class="profile-icon" onclick="navigateTo('profile')" style="margin-left: 10px;">
                     <img id="header-profile-img" src="https://placehold.co/100x100/333/fff?text=U" alt="Profile">
                  </div>

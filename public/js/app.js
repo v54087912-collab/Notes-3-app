@@ -8,7 +8,7 @@ let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let dbSongs = []; // Songs fetched from Firestore
 
 // Imports
-import { db, collection, getDocs, increment, doc, updateDoc, auth, onAuthStateChanged, signOut } from './firebase-config.js';
+import { db, collection, getDocs, increment, doc, updateDoc } from './firebase-config.js';
 
 // Constants
 const songListElement = document.getElementById('trending-list');
@@ -18,32 +18,29 @@ const searchInput = document.getElementById('search-input');
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check Auth State
-    onAuthStateChanged(auth, (user) => {
-        const authBtn = document.getElementById('auth-btn-top');
-        const adminBadge = document.getElementById('admin-badge');
-        const profileImg = document.getElementById('header-profile-img');
-        const usernameDisplay = document.getElementById('username-display');
-
-        if (user) {
-            authBtn.innerText = 'Logout';
-            authBtn.onclick = () => signOut(auth).then(()=> window.location.reload());
-
-            if(profileImg) profileImg.src = `https://ui-avatars.com/api/?name=${user.email}&background=random`;
-            if(usernameDisplay) usernameDisplay.innerText = user.displayName || user.email;
-
-            // Check Admin
-            if(user.email === 'devxrev01@gmail.com') {
-                adminBadge.style.display = 'inline-block';
-            } else {
-                adminBadge.style.display = 'none';
-            }
-        } else {
-            authBtn.innerText = 'Login';
-            authBtn.onclick = () => window.location.href = 'login.html';
-            adminBadge.style.display = 'none';
+    // Admin Button Listener
+    window.openAdminPanel = function() {
+        const password = prompt("Enter Admin Password:");
+        if (password === 'devxrev01') {
+            sessionStorage.setItem('isAdmin', 'true');
+            window.location.href = 'admin.html';
+        } else if (password !== null) {
+            alert("Incorrect Password!");
         }
-    });
+    };
+
+    // Sidebar Toggle Logic
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+
+    window.toggleSidebar = function() {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    };
+
+    if (overlay) {
+        overlay.onclick = window.toggleSidebar;
+    }
 
     await fetchSongsFromFirestore();
     loadCategories();
@@ -56,7 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Hide spinner
     setTimeout(() => {
-        document.getElementById('loading-spinner').classList.add('hidden');
+        const spinner = document.getElementById('loading-spinner');
+        if(spinner) spinner.classList.add('hidden');
     }, 1000);
 });
 
@@ -68,7 +66,7 @@ async function fetchSongsFromFirestore() {
             dbSongs.push({ id: doc.id, ...doc.data() });
         });
 
-        // Fallback to local songs.js if DB is empty (seeding logic could go here)
+        // Fallback to local songs.js if DB is empty
         if (dbSongs.length === 0 && typeof songDatabase !== 'undefined') {
             console.log("Firestore empty, using local fallback");
             dbSongs = songDatabase;
@@ -107,6 +105,7 @@ window.navigateTo = function(pageId) {
 
 // Load Songs into DOM
 function loadSongs(songs, targetElement = songListElement) {
+    if (!targetElement) return;
     targetElement.innerHTML = '';
     songs.forEach((song, index) => {
         const item = document.createElement('div');
@@ -147,6 +146,7 @@ function loadSongs(songs, targetElement = songListElement) {
 // Categories
 async function loadCategories() {
     const categoriesListElement = document.getElementById('categories-list');
+    if(!categoriesListElement) return;
     categoriesListElement.innerHTML = '';
 
     // Add 'All' first
@@ -436,6 +436,7 @@ window.addToPlaylistCurrent = function() {
 
 function loadLibrary() {
     const container = document.getElementById('playlists-container');
+    if(!container) return;
     container.innerHTML = '';
     const names = Object.keys(userPlaylists);
 

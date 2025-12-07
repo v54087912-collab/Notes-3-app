@@ -271,20 +271,20 @@
     </div>
 
     <script type="module">
-        import { auth, db, collection, getDocs, addDoc, doc, deleteDoc, updateDoc, query, orderBy, limit, onAuthStateChanged, getDoc, setDoc } from './js/firebase-config.js';
+        import { db, collection, getDocs, addDoc, doc, deleteDoc, updateDoc, query, orderBy, limit, getDoc, setDoc } from './js/firebase-config.js';
 
-        // Check Admin Auth
-        onAuthStateChanged(auth, (user) => {
-            if (!user || user.email !== 'devxrev01@gmail.com') {
-                // Wait briefly to avoid flicker if auth state resolves quickly
-                // but here we just redirect
-                window.location.href = 'index.html';
-            } else {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('admin-panel').style.display = 'block';
-                loadCategoriesToSelect();
-                loadDashboard();
-            }
+        // Check Admin Auth via Session
+        document.addEventListener('DOMContentLoaded', () => {
+             const isAdmin = sessionStorage.getItem('isAdmin');
+             if (isAdmin !== 'true') {
+                 // Not authenticated as admin
+                 window.location.href = 'index.html';
+             } else {
+                 document.getElementById('loading').style.display = 'none';
+                 document.getElementById('admin-panel').style.display = 'block';
+                 loadCategoriesToSelect();
+                 loadDashboard();
+             }
         });
 
         // Tabs
