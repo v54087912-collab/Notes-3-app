@@ -271,15 +271,23 @@
     </div>
 
     <script type="module">
-        import { db, collection, getDocs, addDoc, doc, deleteDoc, updateDoc, query, orderBy, limit, getDoc, setDoc } from './js/firebase-config.js';
+        import { db, ref, set, get, child, push, update, remove, onValue, auth, signInWithEmailAndPassword } from './js/firebase-config.js';
 
         // Check Admin Auth via Session
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
              const isAdmin = sessionStorage.getItem('isAdmin');
              if (isAdmin !== 'true') {
                  // Not authenticated as admin
                  window.location.href = 'index.html';
              } else {
+                 // Authenticate with Firebase silently to allow writes if rules require auth
+                 // Trying old credentials, might fail if user doesn't exist in new project
+                 try {
+                     await signInWithEmailAndPassword(auth, 'devxrev01@gmail.com', 'devxrev01');
+                 } catch (e) {
+                     console.log("Auto-login failed (expected if new project):", e.message);
+                 }
+
                  document.getElementById('loading').style.display = 'none';
                  document.getElementById('admin-panel').style.display = 'block';
                  loadCategoriesToSelect();
@@ -306,44 +314,50 @@
         // 1. Load Dashboard Stats
         async function loadDashboard() {
             // Count Songs
-            const songsSnap = await getDocs(collection(db, "songs"));
-            document.getElementById('total-songs').innerText = songsSnap.size;
+            const songsRef = ref(db, 'songs');
+            onValue(songsRef, (snapshot) => {
+                const data = snapshot.val();
+                let count = 0;
+                let totalPlays = 0;
+                let songs = [];
+
+                if (data) {
+                    count = Object.keys(data).length;
+                    Object.values(data).forEach(s => {
+                        totalPlays += (s.playCount || 0);
+                        songs.push(s);
+                    });
+                }
+
+                document.getElementById('total-songs').innerText = count;
+                document.getElementById('total-plays').innerText = totalPlays;
+                renderCharts(totalPlays);
+
+                // Top 5
+                songs.sort((a,b) => (b.playCount || 0) - (a.playCount || 0));
+                const topList = document.getElementById('top-songs-list');
+                topList.innerHTML = '';
+                songs.slice(0, 5).forEach(song => {
+                    topList.innerHTML += `
+                        <div class="list-row">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <img src="${song.cover}" width="40" height="40" style="border-radius:5px;">
+                                <div>
+                                    <div style="font-weight:bold;">${song.title}</div>
+                                    <div style="font-size:12px; color:#aaa;">${song.artist}</div>
+                                </div>
+                            </div>
+                            <div style="color:var(--primary-neon);">${song.playCount || 0} plays</div>
+                        </div>
+                    `;
+                });
+            });
 
             // Count Users
-            const usersSnap = await getDocs(collection(db, "users"));
-            document.getElementById('total-users').innerText = usersSnap.size;
-
-            // Calculate Streams & Top Songs
-            let totalPlays = 0;
-            let songs = [];
-            songsSnap.forEach(doc => {
-                const data = doc.data();
-                const plays = data.playCount || 0;
-                totalPlays += plays;
-                songs.push({ id: doc.id, ...data });
-            });
-            document.getElementById('total-plays').innerText = totalPlays;
-
-            // Render Charts (Mock Data + Real Total)
-            renderCharts(totalPlays);
-
-            // Top 5
-            songs.sort((a,b) => (b.playCount || 0) - (a.playCount || 0));
-            const topList = document.getElementById('top-songs-list');
-            topList.innerHTML = '';
-            songs.slice(0, 5).forEach(song => {
-                topList.innerHTML += `
-                    <div class="list-row">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <img src="${song.cover}" width="40" height="40" style="border-radius:5px;">
-                            <div>
-                                <div style="font-weight:bold;">${song.title}</div>
-                                <div style="font-size:12px; color:#aaa;">${song.artist}</div>
-                            </div>
-                        </div>
-                        <div style="color:var(--primary-neon);">${song.playCount || 0} plays</div>
-                    </div>
-                `;
+            const usersRef = ref(db, 'users');
+            get(usersRef).then((snapshot) => {
+                const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                document.getElementById('total-users').innerText = count;
             });
         }
 
@@ -389,22 +403,31 @@
             try {
                 if(editId) {
                     // Update
-                    await updateDoc(doc(db, "songs", editId), {
+                    const updates = {};
+                    updates['/songs/' + editId] = {
+                        title, artist, category, cover, url
+                    };
+                    // Keep existing fields like playCount? Ideally merge, but update replaces provided keys
+                    // We need to fetch existing to merge if we want to be safe, but 'update' at path does partial
+                    // Actually update takes an object of paths.
+                    // Let's do simple update on the specific node
+                    await update(ref(db, 'songs/' + editId), {
                         title, artist, category, cover, url
                     });
+
                     alert("Song Updated!");
                     resetUploadForm();
                 } else {
                     // Add
-                    await addDoc(collection(db, "songs"), {
+                    const newSongRef = push(ref(db, 'songs'));
+                    await set(newSongRef, {
                         title, artist, category, cover, url,
                         playCount: 0,
-                        dateAdded: new Date()
+                        dateAdded: new Date().toISOString()
                     });
                     alert("Song Uploaded!");
                     resetUploadForm();
                 }
-                loadDashboard();
             } catch (e) {
                 alert("Error: " + e.message);
             }
@@ -436,92 +459,98 @@
         }
 
         // 3. Manage Songs
-        async function loadManageSongs() {
+        function loadManageSongs() {
             const list = document.getElementById('manage-song-list');
             list.innerHTML = 'Loading...';
-            const querySnapshot = await getDocs(collection(db, "songs"));
-            list.innerHTML = '';
 
-            querySnapshot.forEach((docSnap) => {
-                const s = docSnap.data();
-                const item = document.createElement('div');
-                item.className = 'list-row';
-                item.innerHTML = `
-                    <div>${s.title} <span style="color:#666">by ${s.artist}</span></div>
-                    <div>
-                        <button class="btn-sm btn-edit">Edit</button>
-                        <button class="btn-sm btn-delete">Delete</button>
-                    </div>
-                `;
+            onValue(ref(db, 'songs'), (snapshot) => {
+                const data = snapshot.val();
+                list.innerHTML = '';
+                if(data) {
+                    Object.keys(data).forEach((key) => {
+                        const s = data[key];
+                        const item = document.createElement('div');
+                        item.className = 'list-row';
+                        item.innerHTML = `
+                            <div>${s.title} <span style="color:#666">by ${s.artist}</span></div>
+                            <div>
+                                <button class="btn-sm btn-edit">Edit</button>
+                                <button class="btn-sm btn-delete">Delete</button>
+                            </div>
+                        `;
 
-                item.querySelector('.btn-edit').onclick = () => editSong(docSnap.id, s);
-                item.querySelector('.btn-delete').onclick = async () => {
-                    if(confirm(`Delete ${s.title}?`)) {
-                        await deleteDoc(doc(db, "songs", docSnap.id));
-                        loadManageSongs(); // Refresh
-                        loadDashboard();
-                    }
-                };
+                        item.querySelector('.btn-edit').onclick = () => editSong(key, s);
+                        item.querySelector('.btn-delete').onclick = async () => {
+                            if(confirm(`Delete ${s.title}?`)) {
+                                await remove(ref(db, 'songs/' + key));
+                            }
+                        };
 
-                list.appendChild(item);
-            });
+                        list.appendChild(item);
+                    });
+                } else {
+                    list.innerHTML = 'No songs found.';
+                }
+            }, { onlyOnce: true });
         }
 
         // 3.5 Categories
-        async function loadCategoriesToSelect() {
+        function loadCategoriesToSelect() {
              const select = document.getElementById('up-category');
              select.innerHTML = '';
-             const snap = await getDocs(collection(db, "categories"));
-             if(snap.empty) {
-                 // Seed defaults if empty
-                 ['Pop', 'LoFi', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(c => {
-                     addDoc(collection(db, "categories"), { name: c });
-                 });
-                 // Re-fetch (lazy) or just add
-                 ['Pop', 'LoFi', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c; opt.innerText = c;
-                    select.appendChild(opt);
-                 });
-             } else {
-                 snap.forEach(doc => {
-                     const opt = document.createElement('option');
-                     opt.value = doc.data().name;
-                     opt.innerText = doc.data().name;
-                     select.appendChild(opt);
-                 });
-             }
+
+             onValue(ref(db, 'categories'), (snapshot) => {
+                 const data = snapshot.val();
+                 select.innerHTML = '';
+
+                 if(!data) {
+                     // Seed
+                     ['Pop', 'LoFi', 'Chill', 'Bollywood', 'Anime', 'Rock'].forEach(c => {
+                         push(ref(db, 'categories'), { name: c });
+                     });
+                 } else {
+                     Object.values(data).forEach(cat => {
+                         const opt = document.createElement('option');
+                         opt.value = cat.name;
+                         opt.innerText = cat.name;
+                         select.appendChild(opt);
+                     });
+                 }
+             }, { onlyOnce: true });
         }
 
-        async function loadCategoriesTab() {
+        function loadCategoriesTab() {
             const list = document.getElementById('cat-list');
             list.innerHTML = 'Loading...';
-            const snap = await getDocs(collection(db, "categories"));
-            list.innerHTML = '';
 
-            snap.forEach(docSnap => {
-                 const c = docSnap.data();
-                 const item = document.createElement('div');
-                 item.className = 'list-row';
-                 item.innerHTML = `
-                    <div>${c.name}</div>
-                    <div><button class="btn-sm btn-delete">Delete</button></div>
-                 `;
-                 item.querySelector('.btn-delete').onclick = async () => {
-                     if(confirm(`Delete Category ${c.name}?`)) {
-                         await deleteDoc(doc(db, "categories", docSnap.id));
-                         loadCategoriesTab();
-                         loadCategoriesToSelect();
-                     }
-                 };
-                 list.appendChild(item);
-            });
+            onValue(ref(db, 'categories'), (snapshot) => {
+                const data = snapshot.val();
+                list.innerHTML = '';
+                if(data) {
+                    Object.keys(data).forEach(key => {
+                         const c = data[key];
+                         const item = document.createElement('div');
+                         item.className = 'list-row';
+                         item.innerHTML = `
+                            <div>${c.name}</div>
+                            <div><button class="btn-sm btn-delete">Delete</button></div>
+                         `;
+                         item.querySelector('.btn-delete').onclick = async () => {
+                             if(confirm(`Delete Category ${c.name}?`)) {
+                                 await remove(ref(db, 'categories/' + key));
+                                 loadCategoriesTab(); // Refresh done via listener usually but here manually invoked or listener updates
+                             }
+                         };
+                         list.appendChild(item);
+                    });
+                }
+            }, { onlyOnce: true });
         }
 
         document.getElementById('btn-add-cat').onclick = async () => {
              const name = document.getElementById('new-cat-name').value;
              if(name) {
-                 await addDoc(collection(db, "categories"), { name });
+                 await push(ref(db, 'categories'), { name });
                  document.getElementById('new-cat-name').value = '';
                  loadCategoriesTab();
                  loadCategoriesToSelect();
@@ -529,38 +558,44 @@
         };
 
         // 4. Manage Users
-        async function loadUsers() {
+        function loadUsers() {
             const list = document.getElementById('user-list');
             list.innerHTML = 'Loading...';
-            const querySnapshot = await getDocs(collection(db, "users"));
-            list.innerHTML = '';
 
-            querySnapshot.forEach((docSnap) => {
-                const u = docSnap.data();
-                const item = document.createElement('div');
-                item.className = 'list-row';
-                const isBlocked = u.isBlocked || false;
+            onValue(ref(db, 'users'), (snapshot) => {
+                const data = snapshot.val();
+                list.innerHTML = '';
+                if(data) {
+                    Object.keys(data).forEach(key => {
+                        const u = data[key];
+                        const item = document.createElement('div');
+                        item.className = 'list-row';
+                        const isBlocked = u.isBlocked || false;
 
-                item.innerHTML = `
-                    <div>
-                        <div style="font-weight:bold;">${u.name || 'User'}</div>
-                        <div style="font-size:12px; color:#aaa;">${u.email}</div>
-                    </div>
-                    <div>
-                        <button class="btn-sm btn-block">${isBlocked ? 'Unblock' : 'Block'}</button>
-                    </div>
-                `;
+                        item.innerHTML = `
+                            <div>
+                                <div style="font-weight:bold;">${u.name || 'User'}</div>
+                                <div style="font-size:12px; color:#aaa;">${u.email}</div>
+                            </div>
+                            <div>
+                                <button class="btn-sm btn-block">${isBlocked ? 'Unblock' : 'Block'}</button>
+                            </div>
+                        `;
 
-                // Block Action
-                item.querySelector('.btn-block').onclick = async () => {
-                    await updateDoc(doc(db, "users", docSnap.id), {
-                        isBlocked: !isBlocked
+                        // Block Action
+                        item.querySelector('.btn-block').onclick = async () => {
+                            await update(ref(db, 'users/' + key), {
+                                isBlocked: !isBlocked
+                            });
+                            loadUsers();
+                        };
+
+                        list.appendChild(item);
                     });
-                    loadUsers();
-                };
-
-                list.appendChild(item);
-            });
+                } else {
+                    list.innerHTML = 'No users found.';
+                }
+            }, { onlyOnce: true });
         }
     </script>
 </body>

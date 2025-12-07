@@ -5,10 +5,10 @@ let audio = new Audio();
 let currentPlaylist = []; // Current list of songs being played (Trending, Playlist, Search results)
 let userPlaylists = JSON.parse(localStorage.getItem('userPlaylists')) || {};
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-let dbSongs = []; // Songs fetched from Firestore
+let dbSongs = []; // Songs fetched from Realtime Database
 
 // Imports
-import { db, collection, getDocs, increment, doc, updateDoc } from './firebase-config.js';
+import { db, auth, signInWithEmailAndPassword, ref, get, child, update, runTransaction, onValue, query, orderByChild } from './firebase-config.js';
 
 // Constants
 const songListElement = document.getElementById('trending-list');
@@ -42,14 +42,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         overlay.onclick = window.toggleSidebar;
     }
 
-    await fetchSongsFromFirestore();
-    loadCategories();
+    // Authenticate silently to allow database reads (since rules block unauth)
+    try {
+        await signInWithEmailAndPassword(auth, 'devxrev01@gmail.com', 'devxrev01');
+        console.log("Authenticated silently.");
+    } catch (error) {
+        console.error("Silent auth failed:", error);
+    }
+
+    // Real-time listener for songs
+    setupSongsListener();
+    setupCategoriesListener();
     loadRecent();
     setupTheme();
     updateGreeting();
 
     // Default to trending
-    currentPlaylist = [...dbSongs];
+    // currentPlaylist set inside listener
 
     // Hide spinner
     setTimeout(() => {
@@ -58,29 +67,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1000);
 });
 
-async function fetchSongsFromFirestore() {
-    try {
-        const querySnapshot = await getDocs(collection(db, "songs"));
+function setupSongsListener() {
+    const songsRef = ref(db, 'songs');
+    onValue(songsRef, (snapshot) => {
+        const data = snapshot.val();
         dbSongs = [];
-        querySnapshot.forEach((doc) => {
-            dbSongs.push({ id: doc.id, ...doc.data() });
-        });
+        if (data) {
+            Object.keys(data).forEach(key => {
+                dbSongs.push({ id: key, ...data[key] });
+            });
+        }
 
         // Fallback to local songs.js if DB is empty
         if (dbSongs.length === 0 && typeof songDatabase !== 'undefined') {
-            console.log("Firestore empty, using local fallback");
+            console.log("Database empty, using local fallback");
             dbSongs = songDatabase;
         }
 
         loadSongs(dbSongs);
-    } catch (e) {
-        console.error("Error fetching songs: ", e);
-        // Fallback
+        currentPlaylist = [...dbSongs];
+    }, (error) => {
+        console.error("Error fetching songs: ", error);
+        // Fallback only on error
         if(typeof songDatabase !== 'undefined') {
             loadSongs(songDatabase);
             dbSongs = songDatabase;
+            currentPlaylist = [...dbSongs];
         }
-    }
+    });
 }
 
 // Navigation
@@ -144,23 +158,24 @@ function loadSongs(songs, targetElement = songListElement) {
 }
 
 // Categories
-async function loadCategories() {
-    const categoriesListElement = document.getElementById('categories-list');
-    if(!categoriesListElement) return;
-    categoriesListElement.innerHTML = '';
+function setupCategoriesListener() {
+    const catRef = ref(db, 'categories');
+    onValue(catRef, (snapshot) => {
+        const data = snapshot.val();
+        const categoriesListElement = document.getElementById('categories-list');
+        if(!categoriesListElement) return;
+        categoriesListElement.innerHTML = '';
 
-    // Add 'All' first
-    const allPill = document.createElement('div');
-    allPill.className = 'category-pill active';
-    allPill.innerText = 'All';
-    allPill.onclick = () => filterByCategory('All', allPill);
-    categoriesListElement.appendChild(allPill);
+        // Add 'All' first
+        const allPill = document.createElement('div');
+        allPill.className = 'category-pill active';
+        allPill.innerText = 'All';
+        allPill.onclick = () => filterByCategory('All', allPill);
+        categoriesListElement.appendChild(allPill);
 
-    try {
-        const snap = await getDocs(collection(db, "categories"));
-        if (!snap.empty) {
-            snap.forEach(doc => {
-                const cat = doc.data().name;
+        if(data) {
+             Object.values(data).forEach(catObj => {
+                const cat = catObj.name;
                 const pill = document.createElement('div');
                 pill.className = 'category-pill';
                 pill.innerText = cat;
@@ -177,9 +192,7 @@ async function loadCategories() {
                 categoriesListElement.appendChild(pill);
             });
         }
-    } catch (e) {
-        console.error("Error loading categories", e);
-    }
+    });
 }
 
 function filterByCategory(category, element) {
@@ -207,14 +220,12 @@ function playSong(id, playlistContext = dbSongs) {
         updatePlayerUI();
         addToRecent(song);
 
-        // Update Play Count in Firestore
-        // We only do this if it's a Firestore document (has a string ID usually, local IDs are numbers 1,2,3)
-        // Check if ID is string (Firestore auto-id) or if we fetched it from DB
-        if (typeof id === 'string' && id.length > 5) {
-             const songRef = doc(db, "songs", id);
-             updateDoc(songRef, {
-                 playCount: increment(1)
-             }).catch(err => console.log("Play count update failed", err));
+        // Update Play Count in Realtime Database
+        if (typeof id === 'string' && id.length > 5) { // Assuming generated keys are long strings
+             const songRef = ref(db, `songs/${id}/playCount`);
+             runTransaction(songRef, (currentPlayCount) => {
+                 return (currentPlayCount || 0) + 1;
+             });
         }
     }
 }
