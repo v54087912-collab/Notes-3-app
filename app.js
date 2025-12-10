@@ -101,22 +101,6 @@ function applyTheme() {
 // Tab Switching
 window.switchTab = function(tab) {
     appState.currentTab = tab;
-
-    // Update Tab Styles
-    if (tab === 'notes') {
-        elements.tabNotes.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
-        elements.tabNotes.classList.remove('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
-
-        elements.tabTasks.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
-        elements.tabTasks.classList.add('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
-    } else {
-        elements.tabTasks.classList.add('bg-blue-500', 'text-white', 'shadow-sm');
-        elements.tabTasks.classList.remove('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
-
-        elements.tabNotes.classList.remove('bg-blue-500', 'text-white', 'shadow-sm');
-        elements.tabNotes.classList.add('text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
-    }
-
     renderApp();
 };
 
@@ -126,23 +110,21 @@ function renderApp() {
     if (appState.currentTab === 'notes') {
         elements.notesView.classList.remove('hidden');
         elements.tasksView.classList.add('hidden');
+
+        elements.tabNotes.classList.add('active');
+        elements.tabTasks.classList.remove('active');
+
         renderNotes();
     } else {
         elements.notesView.classList.add('hidden');
         elements.tasksView.classList.remove('hidden');
+
+        elements.tabTasks.classList.add('active');
+        elements.tabNotes.classList.remove('active');
+
         renderTasks();
     }
     updateStats();
-}
-
-function getCategoryColor(category) {
-    const map = {
-        'Personal': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-        'Work': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-        'Study': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-        'Ideas': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-    };
-    return map[category] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 }
 
 function renderNotes() {
@@ -161,22 +143,26 @@ function renderNotes() {
         filteredNotes.forEach(note => {
             const date = new Date(note.createdAt).toLocaleDateString();
             const card = document.createElement('div');
-            card.className = 'note-card bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col h-full';
+            card.className = 'note-card';
+
+            // Map category to badge class
+            const badgeClass = `badge badge-${note.category.toLowerCase()}`;
+
             card.innerHTML = `
-                <div class="flex justify-between items-start mb-3">
-                    <span class="text-xs font-semibold px-2 py-1 rounded-md ${getCategoryColor(note.category)}">${note.category}</span>
-                    <div class="flex gap-1">
-                        <button onclick="editItem('${note.id}', 'note')" class="btn-edit p-1.5 rounded-md text-gray-400 hover:text-blue-500 transition-colors">
-                            <i data-feather="edit-2" class="w-4 h-4"></i>
+                <div class="card-header">
+                    <span class="${badgeClass}">${note.category}</span>
+                    <div class="card-actions">
+                        <button onclick="editItem('${note.id}', 'note')" class="btn-action edit">
+                            <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
                         </button>
-                        <button onclick="deleteItem('${note.id}', 'note')" class="btn-delete p-1.5 rounded-md text-gray-400 hover:text-red-500 transition-colors">
-                            <i data-feather="trash-2" class="w-4 h-4"></i>
+                        <button onclick="deleteItem('${note.id}', 'note')" class="btn-action delete">
+                            <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
                         </button>
                     </div>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">${escapeHtml(note.title)}</h3>
-                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 flex-grow whitespace-pre-wrap">${escapeHtml(note.content)}</p>
-                <div class="mt-auto text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-3">
+                <h3 class="note-title">${escapeHtml(note.title)}</h3>
+                <p class="note-content">${escapeHtml(note.content)}</p>
+                <div class="note-footer">
                     ${date}
                 </div>
             `;
@@ -203,35 +189,31 @@ function renderTasks() {
 
         filteredTasks.forEach(task => {
             const item = document.createElement('div');
-            item.className = `group flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all ${task.completed ? 'opacity-60' : ''}`;
+            item.className = `task-item ${task.completed ? 'completed' : ''}`;
 
-            // Extract text colors specifically for the task view logic, or just reuse the class string
-            // For tasks, we want a simpler view, just text color
-            // Parse the classes from getCategoryColor to find text colors
-            const colorClasses = getCategoryColor(task.category);
-            const textColors = colorClasses.split(' ').filter(c => c.startsWith('text-') || c.startsWith('dark:text-')).join(' ');
+            const catColorVar = `var(--cat-${task.category.toLowerCase()}-text)`;
 
             item.innerHTML = `
-                <label class="relative flex items-center cursor-pointer">
-                    <input type="checkbox" class="peer sr-only task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')">
-                    <div class="w-5 h-5 border-2 border-gray-300 dark:border-gray-500 rounded-md peer-checked:bg-blue-500 peer-checked:border-blue-500 transition-all flex items-center justify-center">
-                        <i data-feather="check" class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100"></i>
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" class="checkbox-input" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')">
+                    <div class="checkbox-visual">
+                        <i data-feather="check"></i>
                     </div>
                 </label>
 
-                <div class="flex-grow">
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200 transition-all ${task.completed ? 'line-through text-gray-400 dark:text-gray-500' : ''}">
+                <div class="task-content">
+                    <p class="task-title">
                         ${escapeHtml(task.title)}
                     </p>
-                    <span class="text-xs ${textColors} font-medium mt-0.5 block">${task.category}</span>
+                    <span class="task-category" style="color: ${catColorVar}">${task.category}</span>
                 </div>
 
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onclick="editItem('${task.id}', 'task')" class="btn-edit p-1.5 rounded-md text-gray-400 hover:text-blue-500 transition-colors">
-                        <i data-feather="edit-2" class="w-4 h-4"></i>
+                <div class="task-actions">
+                    <button onclick="editItem('${task.id}', 'task')" class="btn-action edit">
+                        <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
                     </button>
-                    <button onclick="deleteItem('${task.id}', 'task')" class="btn-delete p-1.5 rounded-md text-gray-400 hover:text-red-500 transition-colors">
-                        <i data-feather="trash-2" class="w-4 h-4"></i>
+                    <button onclick="deleteItem('${task.id}', 'task')" class="btn-action delete">
+                        <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
                     </button>
                 </div>
             `;
@@ -286,11 +268,11 @@ function openModal(id = null, type = appState.currentTab) {
     elements.modalOverlay.classList.remove('hidden');
     // Trigger reflow for animation
     void elements.modalOverlay.offsetWidth;
-    elements.modalOverlay.classList.add('modal-open');
+    elements.modalOverlay.classList.add('open');
 }
 
 function closeModal() {
-    elements.modalOverlay.classList.remove('modal-open');
+    elements.modalOverlay.classList.remove('open');
     setTimeout(() => {
         elements.modalOverlay.classList.add('hidden');
     }, 300);
