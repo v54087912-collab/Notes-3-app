@@ -52,13 +52,16 @@ const elements = {
         totalNotes: document.getElementById('stat-total-notes'),
         totalTasks: document.getElementById('stat-total-tasks'),
         completedTasks: document.getElementById('stat-completed-tasks')
-    }
+    },
+    streakCounter: document.getElementById('streak-counter'),
+    streakValue: document.getElementById('streak-value')
 };
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     applyTheme();
+    calculateStreak();
     renderApp();
     setupEventListeners();
     checkPinOnStart();
@@ -108,15 +111,19 @@ function setupEventListeners() {
 function loadData() {
     const savedNotes = localStorage.getItem('notes');
     const savedTasks = localStorage.getItem('tasks');
+    const savedHabits = localStorage.getItem('habits');
 
     if (savedNotes) appState.notes = JSON.parse(savedNotes);
     if (savedTasks) appState.tasks = JSON.parse(savedTasks);
+    if (savedHabits) appState.habits = JSON.parse(savedHabits);
 }
 
 function saveData() {
     localStorage.setItem('notes', JSON.stringify(appState.notes));
     localStorage.setItem('tasks', JSON.stringify(appState.tasks));
+    localStorage.setItem('habits', JSON.stringify(appState.habits));
     updateStats();
+    calculateStreak();
 }
 
 // Theme Logic
@@ -183,23 +190,35 @@ window.switchTab = function(tab) {
 
 // Rendering
 function renderApp() {
-    // Show/Hide Views
+    // Hide all views first
+    elements.notesView.classList.add('hidden');
+    elements.tasksView.classList.add('hidden');
+    elements.habitsView.classList.add('hidden');
+    elements.calendarView.classList.add('hidden');
+    elements.emptyState.classList.add('hidden');
+
+    // Deactivate all tabs
+    elements.tabNotes.classList.remove('active');
+    elements.tabTasks.classList.remove('active');
+    elements.tabHabits.classList.remove('active');
+    elements.tabCalendar.classList.remove('active');
+
     if (appState.currentTab === 'notes') {
         elements.notesView.classList.remove('hidden');
-        elements.tasksView.classList.add('hidden');
-
         elements.tabNotes.classList.add('active');
-        elements.tabTasks.classList.remove('active');
-
         renderNotes();
-    } else {
-        elements.notesView.classList.add('hidden');
+    } else if (appState.currentTab === 'tasks') {
         elements.tasksView.classList.remove('hidden');
-
         elements.tabTasks.classList.add('active');
-        elements.tabNotes.classList.remove('active');
-
         renderTasks();
+    } else if (appState.currentTab === 'habits') {
+        elements.habitsView.classList.remove('hidden');
+        elements.tabHabits.classList.add('active');
+        renderHabits();
+    } else if (appState.currentTab === 'calendar') {
+        elements.calendarView.classList.remove('hidden');
+        elements.tabCalendar.classList.add('active');
+        renderCalendar();
     }
     updateStats();
 }
@@ -215,14 +234,11 @@ function renderNotes() {
     if (filteredNotes.length === 0) {
         elements.emptyState.classList.remove('hidden');
     } else {
-        elements.emptyState.classList.add('hidden');
-
         filteredNotes.forEach(note => {
             const date = new Date(note.createdAt).toLocaleDateString();
             const card = document.createElement('div');
             card.className = 'note-card';
 
-            // Map category to badge class
             const badgeClass = `badge badge-${note.category.toLowerCase()}`;
 
             card.innerHTML = `
@@ -243,9 +259,7 @@ function renderNotes() {
                     ${date}
                 </div>
             `;
-            // Add swipe handler
             setupSwipeHandlers(card, note.id, 'note');
-
             elements.notesView.appendChild(card);
         });
         feather.replace();
@@ -262,14 +276,10 @@ function renderTasks() {
     if (filteredTasks.length === 0) {
         elements.emptyState.classList.remove('hidden');
     } else {
-        elements.emptyState.classList.add('hidden');
-
-        // Sort tasks: Incomplete first, then Completed
         filteredTasks.sort((a, b) => a.completed === b.completed ? 0 : a.completed ? 1 : -1);
 
         filteredTasks.forEach(task => {
             const item = document.createElement('div');
-            // Add priority class if exists, default to medium
             const priorityClass = task.priority ? `priority-${task.priority.toLowerCase()}` : 'priority-medium';
             item.className = `task-item ${task.completed ? 'completed' : ''} ${priorityClass} task-card`;
 
@@ -307,12 +317,82 @@ function renderTasks() {
                     </button>
                 </div>
             `;
-            // Add swipe handler
             setupSwipeHandlers(item, task.id, 'task');
-
             elements.tasksView.appendChild(item);
         });
         feather.replace();
+    }
+}
+
+function renderHabits() {
+    elements.habitsView.innerHTML = '';
+    const filteredHabits = appState.habits.filter(habit => habit.title.toLowerCase().includes(appState.filter));
+
+    if (filteredHabits.length === 0) {
+        elements.emptyState.classList.remove('hidden');
+    } else {
+        const today = new Date().toISOString().split('T')[0];
+
+        filteredHabits.forEach(habit => {
+            const isDoneToday = habit.history && habit.history[today];
+            const item = document.createElement('div');
+            item.className = 'habit-item';
+
+            item.innerHTML = `
+                <div>
+                    <h4 class="task-title">${escapeHtml(habit.title)}</h4>
+                    <span class="habit-streak">🔥 ${habit.streak} days</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="habit-check ${isDoneToday ? 'done' : ''}" onclick="toggleHabit('${habit.id}')">
+                        ${isDoneToday ? '<i data-feather="check"></i>' : ''}
+                    </div>
+                    <button onclick="editItem('${habit.id}', 'habit')" class="btn-action edit">
+                        <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    <button onclick="deleteItem('${habit.id}', 'habit')" class="btn-action delete">
+                        <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </div>
+            `;
+            elements.habitsView.appendChild(item);
+        });
+        feather.replace();
+    }
+}
+
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendar-grid');
+    calendarGrid.innerHTML = '';
+
+    const now = new Date();
+    const currentMonth = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    document.getElementById('calendar-month').textContent = currentMonth;
+
+    // Simple calendar logic for current month
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+    // Empty slots
+    for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        calendarGrid.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayEl = document.createElement('div');
+        dayEl.className = 'calendar-day';
+        if (day === now.getDate()) dayEl.classList.add('today');
+
+        dayEl.textContent = day;
+
+        // Check for tasks due this day
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const hasTask = appState.tasks.some(t => t.dueDate && t.dueDate.startsWith(dateStr));
+
+        if (hasTask) dayEl.classList.add('has-task');
+
+        calendarGrid.appendChild(dayEl);
     }
 }
 
@@ -322,11 +402,28 @@ function updateStats() {
     elements.stats.completedTasks.textContent = appState.tasks.filter(t => t.completed).length;
 }
 
+function calculateStreak() {
+    // Simple global streak logic: if any habit was done yesterday, increment, else reset.
+    // This is a simplified version. Ideally per habit.
+    // For global streak, let's just count total habits done today for visual.
+    // Or, show max streak among habits.
+    let maxStreak = 0;
+    appState.habits.forEach(h => {
+        if (h.streak > maxStreak) maxStreak = h.streak;
+    });
+
+    elements.streakValue.textContent = maxStreak;
+    if (maxStreak > 0) elements.streakCounter.classList.remove('hidden');
+    else elements.streakCounter.classList.add('hidden');
+}
+
 // Actions
 function openModal(id = null, type = appState.currentTab) {
     // Normalize type from tab names to item types
     if (type === 'notes') type = 'note';
     if (type === 'tasks') type = 'task';
+    if (type === 'habits') type = 'habit';
+    if (type === 'calendar') type = 'task'; // Default to task for calendar
 
     elements.itemId.value = id || '';
     elements.itemType.value = type;
@@ -361,7 +458,11 @@ function openModal(id = null, type = appState.currentTab) {
 
     // Load Data if Editing
     if (id) {
-        const list = type === 'note' ? appState.notes : appState.tasks;
+        let list;
+        if (type === 'note') list = appState.notes;
+        else if (type === 'task') list = appState.tasks;
+        else if (type === 'habit') list = appState.habits;
+
         const item = list.find(i => i.id === id);
         if (item) {
             elements.itemTitle.value = item.title;
@@ -476,8 +577,10 @@ window.deleteItem = function(id, type) {
     if (confirm('Are you sure you want to delete this item?')) {
         if (type === 'note') {
             appState.notes = appState.notes.filter(n => n.id !== id);
-        } else {
+        } else if (type === 'task') {
             appState.tasks = appState.tasks.filter(t => t.id !== id);
+        } else if (type === 'habit') {
+            appState.habits = appState.habits.filter(h => h.id !== id);
         }
         saveData();
         renderApp();
@@ -492,6 +595,25 @@ window.toggleTask = function(id) {
     const task = appState.tasks.find(t => t.id === id);
     if (task) {
         task.completed = !task.completed;
+        saveData();
+        renderApp();
+    }
+};
+
+window.toggleHabit = function(id) {
+    const habit = appState.habits.find(h => h.id === id);
+    if (habit) {
+        const today = new Date().toISOString().split('T')[0];
+        if (habit.history && habit.history[today]) {
+            // Uncheck
+            delete habit.history[today];
+            if (habit.streak > 0) habit.streak--;
+        } else {
+            // Check
+            if (!habit.history) habit.history = {};
+            habit.history[today] = true;
+            habit.streak++;
+        }
         saveData();
         renderApp();
     }
