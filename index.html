@@ -22,10 +22,14 @@
                 </div>
                 <h1>NoteFlow</h1>
             </div>
-            <button id="theme-toggle" class="btn-icon" aria-label="Toggle Dark Mode">
-                <i data-feather="moon" class="icon-moon"></i>
-                <i data-feather="sun" class="icon-sun"></i>
-            </button>
+            <div class="header-actions">
+                <button id="btn-focus-mode" class="btn-icon" aria-label="Focus Mode" title="Focus Timer">
+                    <i data-feather="clock"></i>
+                </button>
+                <button id="btn-settings" class="btn-icon" aria-label="Settings" title="Settings & Themes">
+                    <i data-feather="settings"></i>
+                </button>
+            </div>
         </header>
 
         <!-- Dashboard Stats -->
@@ -71,6 +75,12 @@
                 <button id="tab-tasks" class="tab-btn" onclick="switchTab('tasks')">
                     Tasks
                 </button>
+                <button id="tab-habits" class="tab-btn" onclick="switchTab('habits')">
+                    Habits
+                </button>
+                <button id="tab-calendar" class="tab-btn" onclick="switchTab('calendar')">
+                    Calendar
+                </button>
             </div>
 
             <!-- Search & Add -->
@@ -98,6 +108,21 @@
                 <!-- Task Items will be injected here -->
             </div>
 
+            <!-- Habits View -->
+            <div id="habits-view" class="list-view hidden">
+                <!-- Habits injected here -->
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendar-view" class="hidden">
+                <div class="calendar-header">
+                    <h2 id="calendar-month">Month Year</h2>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- Days injected here -->
+                </div>
+            </div>
+
             <!-- Empty State -->
             <div id="empty-state" class="empty-state hidden">
                 <div class="empty-icon">
@@ -108,6 +133,76 @@
             </div>
         </main>
 
+    <!-- Streak Counter -->
+    <div id="streak-counter" class="streak-counter hidden">
+        <span class="streak-fire">🔥</span>
+        <span id="streak-value">0</span> Day Streak
+    </div>
+
+    </div>
+
+    <!-- Focus Timer Modal -->
+    <div id="focus-modal" class="modal-overlay hidden">
+        <div class="modal-card center-text">
+            <div class="modal-header">
+                <h3>Focus Timer</h3>
+                <button id="focus-close" class="btn-icon">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="timer-display">
+                <span id="timer-minutes">25</span>:<span id="timer-seconds">00</span>
+            </div>
+            <div class="timer-controls">
+                <button id="timer-start" class="btn-primary">Start</button>
+                <button id="timer-reset" class="btn-secondary">Reset</button>
+            </div>
+            <div class="timer-presets">
+                <button onclick="setTimer(25)" class="badge">25m</button>
+                <button onclick="setTimer(15)" class="badge">15m</button>
+                <button onclick="setTimer(5)" class="badge">5m</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-card settings-modal">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button id="settings-close" class="btn-icon">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>Theme</label>
+                <div class="theme-grid" id="theme-grid">
+                    <div class="theme-btn" data-theme="light">Light</div>
+                    <div class="theme-btn" data-theme="dark">Dark</div>
+                    <div class="theme-btn" data-theme="theme-neon">Neon</div>
+                    <div class="theme-btn" data-theme="theme-gradient">Gradient</div>
+                    <div class="theme-btn" data-theme="theme-amoled">AMOLED</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Security</label>
+                <button id="btn-setup-pin" class="btn-secondary w-full">Setup App Lock PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Lock Modal -->
+    <div id="pin-modal" class="modal-overlay hidden" style="z-index: 9999; background: var(--bg-color);">
+        <div class="modal-card center-text">
+            <h3 id="pin-title">Enter PIN</h3>
+            <input type="password" id="pin-input" class="form-input text-center text-2xl" maxlength="4" placeholder="****" style="letter-spacing: 8px;">
+            <p id="pin-error" class="text-red hidden">Incorrect PIN</p>
+            <div class="modal-footer">
+                <button id="pin-submit" class="btn-primary w-full">Unlock</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal for Adding/Editing -->
@@ -126,13 +221,23 @@
 
                 <div class="form-group">
                     <label>Title</label>
-                    <input type="text" id="item-title" required class="form-input">
+                    <div class="input-with-icon">
+                        <input type="text" id="item-title" required class="form-input">
+                        <button type="button" class="btn-voice" onclick="startVoiceInput('item-title')">
+                            <i data-feather="mic"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Note Content Area -->
                 <div id="field-content" class="form-group">
                     <label>Content</label>
-                    <textarea id="item-content" rows="4" class="form-input resize-none"></textarea>
+                    <div class="input-with-icon">
+                        <textarea id="item-content" rows="4" class="form-input resize-none"></textarea>
+                        <button type="button" class="btn-voice" onclick="startVoiceInput('item-content')">
+                            <i data-feather="mic"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Category Selection -->
@@ -156,6 +261,31 @@
                             <span class="badge badge-ideas">Ideas</span>
                         </label>
                     </div>
+                </div>
+
+                <!-- Priority Selection (Tasks Only) -->
+                <div id="field-priority" class="form-group hidden">
+                    <label>Priority</label>
+                    <div class="category-selector">
+                        <label class="radio-label">
+                            <input type="radio" name="priority" value="High">
+                            <span class="badge priority-high">High 🔥</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="priority" value="Medium" checked>
+                            <span class="badge priority-medium">Medium ⚡</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="priority" value="Low">
+                            <span class="badge priority-low">Low 🌙</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Due Date (Tasks Only) -->
+                <div id="field-duedate" class="form-group hidden">
+                    <label>Due Date & Time (Reminder)</label>
+                    <input type="datetime-local" id="item-duedate" class="form-input">
                 </div>
 
                 <div class="modal-footer">

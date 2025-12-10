@@ -649,3 +649,319 @@ html.dark .checkbox-visual {
 .btn-secondary:hover {
     background-color: rgba(128, 128, 128, 0.1);
 }
+
+/* Priority Badges */
+.badge.priority-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge.priority-medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge.priority-low {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge.priority-high:hover { background: rgba(239, 68, 68, 0.2); }
+.badge.priority-medium:hover { background: rgba(245, 158, 11, 0.2); }
+.badge.priority-low:hover { background: rgba(16, 185, 129, 0.2); }
+
+/* Task Card Priority Indicator */
+.task-card.priority-high { border-left: 4px solid #ef4444; }
+.task-card.priority-medium { border-left: 4px solid #f59e0b; }
+.task-card.priority-low { border-left: 4px solid #10b981; }
+
+/* Dark Mode Adjustments for Priorities */
+html.dark .badge.priority-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+html.dark .badge.priority-medium {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+html.dark .badge.priority-low {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+/* Voice Input Styling */
+.input-with-icon {
+    position: relative;
+    width: 100%;
+}
+
+.input-with-icon .form-input {
+    padding-right: 40px; /* Space for mic button */
+}
+
+.btn-voice {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 4px;
+    border-radius: 50%;
+}
+
+.input-with-icon textarea + .btn-voice {
+    top: 16px; /* Align to top for textareas */
+    transform: none;
+}
+
+.btn-voice:hover {
+    color: var(--primary-color);
+    background: var(--bg-secondary);
+}
+
+.btn-voice.listening {
+    color: #ef4444; /* Red when recording */
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Timer Styles */
+.center-text { text-align: center; }
+
+.timer-display {
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 2rem 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.timer-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.timer-presets {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Due Date Styling */
+.task-due-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.task-due-date.overdue {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Swipe Actions */
+.note-card, .task-item {
+    position: relative;
+    touch-action: pan-y; /* Allow vertical scroll, handle horizontal manually */
+    transition: transform 0.2s ease-out;
+    overflow: hidden; /* Hide the background red */
+    z-index: 1;
+}
+
+/* Background for swipe */
+.swipe-bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0; /* Start hidden */
+    background-color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 20px;
+    color: white;
+    z-index: 0;
+    transition: width 0.1s;
+}
+
+.swipe-bg i {
+    width: 24px;
+    height: 24px;
+}
+
+.swiping {
+    transition: none; /* Instant movement during swipe */
+}
+
+/* --- Theme Definitions --- */
+
+/* Neon Theme */
+html.theme-neon {
+    --bg-color: #09090b;
+    --card-bg: #18181b;
+    --text-primary: #ecfeff;
+    --text-muted: #22d3ee;
+    --primary-color: #06b6d4; /* Cyan */
+    --secondary-color: #d946ef; /* Magenta */
+    --border-color: #0891b2;
+    --shadow-sm: 0 0 10px rgba(6, 182, 212, 0.2);
+    --shadow-md: 0 0 20px rgba(6, 182, 212, 0.4);
+}
+html.theme-neon .card-header, html.theme-neon .task-item {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 0 5px var(--primary-color);
+}
+
+/* Gradient Theme */
+html.theme-gradient {
+    --bg-color: #4158D0;
+    --bg-image: linear-gradient(43deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --text-primary: #1e293b;
+    --text-muted: #64748b;
+    --primary-color: #4f46e5;
+    --secondary-color: #ec4899;
+    --border-color: rgba(255, 255, 255, 0.5);
+}
+html.theme-gradient body {
+    background-image: var(--bg-image);
+    background-attachment: fixed;
+    min-height: 100vh;
+}
+
+/* AMOLED Theme */
+html.theme-amoled {
+    --bg-color: #000000;
+    --card-bg: #000000;
+    --text-primary: #ffffff;
+    --text-muted: #a3a3a3;
+    --primary-color: #ffffff;
+    --secondary-color: #404040;
+    --border-color: #333333;
+    --shadow-sm: none;
+    --shadow-md: 0 0 0 1px #333333;
+}
+
+/* Settings Modal for Theme Selection */
+.settings-modal .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.theme-btn {
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+}
+.theme-btn.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
+/* --- Productivity & Habits --- */
+.streak-counter {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--card-bg);
+    padding: 10px 15px;
+    border-radius: 20px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 50;
+    border: 1px solid var(--border-color);
+}
+.streak-fire { color: #f97316; }
+
+/* Calendar Grid */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 10px;
+}
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    position: relative;
+    cursor: pointer;
+}
+.calendar-day.today {
+    background: var(--primary-color);
+    color: white;
+}
+.calendar-day.has-task::after {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: #ec4899;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+/* Habit Tracker */
+.habit-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+}
+.habit-streak {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.habit-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.habit-check.done {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
